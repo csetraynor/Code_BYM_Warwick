@@ -375,3 +375,9 @@ act_agg %>%
   ) %>%
   dplyr::group_by(time_set) %>%
   dplyr::summarize(mean(within_interval))
+
+
+hist_cohort <- list( mean_mu = mean(pp_mu),
+                     sd_mu = sd(pp_mu),
+                     mean_alpha = mean(pp_alpha),
+                     sd_alpha = sd(pp_alpha))

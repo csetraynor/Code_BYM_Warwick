@@ -1,20 +1,20 @@
 {
     "collab_server" : "",
     "contents" : "/*  Variable naming:\n  obs       = observed\n  cen       = (right) censored\n  N         = number of samples\n  tau       = scale parameter\n  */\n    data {\n      int<lower=0> Nobs;\n      int<lower=0> Ncen;\n      vector[Nobs] yobs;\n      vector[Ncen] ycen;\n    }\n  \n  transformed data {\n    real<lower=0> tau_mu;\n    real<lower=0> tau_al;\n    \n    tau_mu = 10.0;\n    tau_al = 10.0;\n  }\n  \n  parameters {\n    real alpha_raw;\n    real mu;\n  }\n  \n  transformed parameters {\n    real alpha;\n    alpha = exp(tau_al * alpha_raw);\n  }\n  \n  model {\n    yobs ~ weibull(alpha, exp(-(mu)/alpha));\n    target += weibull_lccdf(ycen | alpha, exp(-(mu)/alpha));\n    \n    alpha_raw ~ normal(0.0, 1.0);\n    mu ~ normal(0.0, tau_mu);\n  }\n  ",
-    "created" : 1518705828078.000,
+    "created" : 1518710495625.000,
     "dirty" : false,
     "encoding" : "UTF-8",
     "folds" : "",
     "hash" : "4194995700",
-    "id" : "3CBC02D5",
+    "id" : "CA9B8F62",
     "lastKnownWriteTime" : 1518707206,
-    "last_content_update" : 1518707206569,
+    "last_content_update" : 1518707206,
     "path" : "C:/RFactory/Code_BYM_Warwick/Weibull_null.stan",
     "project_path" : "Weibull_null.stan",
     "properties" : {
         "tempName" : "Untitled1"
     },
-    "relative_order" : 2,
+    "relative_order" : 4,
     "source_on_save" : false,
     "source_window" : "",
     "type" : "stan"
