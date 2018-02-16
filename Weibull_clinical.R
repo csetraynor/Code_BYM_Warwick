@@ -166,10 +166,7 @@ gen_inits <- function(M) {
 
 
 ##Prepare for fit Clinical Model
-standardise <- function(x) {
-  x <- (x-mean(x)) / sd(x) 
-return(x)
-}
+
 M <- cor(train[sapply(train, function(x) !is.character(x))])
 #corrplot(M, method = "ellipse",order = "hclust")
 ##Updated
@@ -182,16 +179,21 @@ corrM %>%
   mutate_all(funs(as.integer)) %>%
   sjPlot::sjp.corr(sort.corr = T, show.legend = T)
 
+## impute idh1_status based on g.cimp
 table(glio_clin_dat$g.cimp_methylation, glio_clin_dat$idh1_status, useNA = "always")
+
+glio_clin_dat$idh1_status[is.na(glio_clin_dat$idh1_status) & glio_clin_dat$g.cimp_methylation == "G-CIMP"] <- "R132C"
+glio_clin_dat$idh1_status[is.na(glio_clin_dat$idh1_status) & glio_clin_dat$g.cimp_methylation == "non-G-CIMP"] <- "WT"
 
 table(glio_clin_dat$g.cimp_methylation, glio_clin_dat$idh1_status,
       glio_clin_dat$mgmt_status, useNA = "always" )
 
 
-#Just for now we will drop the missing values
+#Prepare clinical covariates, just for now we will drop the remaining missing values
 glio_clin_dat <- glio_clin_dat %>%
-  filter(!is.na(g.cimp_methylation) & !is.na( mgmt_status)) %>%
-  mutate(age_centered = standardise(age))
+  filter(!is.na( mgmt_status)) %>%
+  mutate(age_centered = scale(age),  #scaling age because is a continuos covariate
+         g.cimp_or_idh1_r = (I(g.cimp_methylation == "G-CIMP") | I(idh1_status != "WT")))
 
 
 ##Run Stan
@@ -201,7 +203,7 @@ if (interactive())
   file.edit(stanfile)
 testfit <- rstan::stan(stan_file,
                         data = gen_stan_data(glio_clin_dat, '~ age_centered + 
-                                                              I(g.cimp_methylation=="G-CIMP")+ 
+                                                              g.cimp_or_idh1_r + 
                                                               I( mgmt_status=="METHYLATED") '),
                         init = gen_inits(M = 3),
                         iter = 4,
@@ -210,8 +212,8 @@ testfit <- rstan::stan(stan_file,
 nChain <- 4
 wei_fullfit <- rstan::stan(stan_file,
                         data = gen_stan_data(glio_clin_dat, '~ age_centered + 
-                                                              I(g.cimp_methylation=="G-CIMP")+ 
-                                             I(mgmt_status=="METHYLATED") '),
+                                                              g.cimp_or_idh1_r+ 
+                                                              I(mgmt_status=="METHYLATED") '),
                         cores = min(nChain, parallel::detectCores()),
                         seed = 7327,
                         chains = nChain,
