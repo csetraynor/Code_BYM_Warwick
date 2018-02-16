@@ -197,6 +197,7 @@ weibull_sim_data <- function(alpha, mu, n) {
   
   return(data)
 }
+
 #Censoring is "arbitrarily" rexp() , censoring is assumed to be noninformative.
 
 ######## Simulating data for each posterior draw #
@@ -209,7 +210,6 @@ pp_newdata <- purrr::map2(.x = pp_alpha,
                           .f = ~weibull_sim_data(alpha = .x,
                                                  mu = .y,
                                                  n = test_n))
-
 ###### Plot time to event in the posterior draws compare to actual time in dataset
 ggplot(pp_newdata %>%
          bind_rows() %>%

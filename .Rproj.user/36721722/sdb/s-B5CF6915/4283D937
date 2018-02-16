@@ -1,0 +1,21 @@
+{
+    "collab_server" : "",
+    "contents" : "loocv<-function(formula) {\n  s=0\n  for (i in 1:dim(LungCancer)[1]) {\n    l=lm(formula,LungCancer[-i,])\n    s=s+(predict(l,LungCancer[i,])-LungCancer$LungCancerRate[i])^2    \n  }\n  s\n}\n\nrequire(caret)\nflds <- createFolds(y, k = 10, list = TRUE, returnTrain = FALSE)\nnames(flds)[1] <- \"train\"\n\n\nkfoldcv <- function(formula){\n  \n}",
+    "created" : 1518797472769.000,
+    "dirty" : false,
+    "encoding" : "UTF-8",
+    "folds" : "",
+    "hash" : "1083329311",
+    "id" : "4283D937",
+    "lastKnownWriteTime" : 1518799861,
+    "last_content_update" : 1518799861751,
+    "path" : "C:/RFactory/bayesyoungmeet/CV.R",
+    "project_path" : null,
+    "properties" : {
+        "tempName" : "Untitled1"
+    },
+    "relative_order" : 3,
+    "source_on_save" : false,
+    "source_window" : "",
+    "type" : "r_source"
+}

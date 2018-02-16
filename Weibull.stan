@@ -70,7 +70,7 @@
     beta_bg_raw ~ normal(0.0, 1.0);
     alpha_raw ~ normal(0.0, 1.0);
     
-    mu ~ normal(0.0, tau_mu);
+    mu ~ normal(0, tau_mu);
   }
   
   generated quantities {
