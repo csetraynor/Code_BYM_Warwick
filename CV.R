@@ -127,7 +127,7 @@ nzv <- caret::nearZeroVar(X, saveMetrics= TRUE)
 nzv[nzv$nzv,]
 
 ################################################################
-## create data partition
+## Create data partition K folds for Cross Validation
 K = 10
 folds <- caret::createFolds(glio_clin_dat$os_status,
                                            k = 10,
