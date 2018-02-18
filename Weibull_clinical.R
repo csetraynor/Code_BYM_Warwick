@@ -283,7 +283,6 @@ pp_alpha <- rstan::extract(wei_fullfit,'alpha')$alpha
 pp_mu <- rstan::extract(wei_fullfit,'mu')$mu
 pp_beta <- rstan::extract(wei_fullfit, 'beta_bg')$beta_bg
 
-
 # create list
 pp_beta <-  split(pp_beta, seq(nrow(pp_beta)))
 pp_alpha <-  split(pp_alpha, seq(nrow(pp_alpha)))

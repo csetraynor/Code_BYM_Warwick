@@ -349,7 +349,8 @@ pl +
 # Proportion of times is the observed event rate within the 90 % Confidence Interval
 
 ## summarize 90% CI of predicted event rate for each interval
-pp_agg <- pp_predict_surv(pp_alpha = extract(weibull_null_model,'alpha')$alpha,
+pp_agg <- pp_predict_surv(pp_alpha = extract(weibull_null_model,
+                                             'alpha')$alpha,
                           pp_mu = extract(weibull_null_model,'mu')$mu,
                           n = nrow(hist_clin_dat)
 )

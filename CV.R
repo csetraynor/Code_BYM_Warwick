@@ -122,7 +122,7 @@ histogram(X$age)
 nzv <- caret::nearZeroVar(X, saveMetrics= TRUE)
 nzv[nzv$nzv,]
 #Prepare clinical covariates and  ensemble covariates
-X <- X %>% mutate(g.noncimp_or_idh1_wt = (g.cimp_methylationnongcimp | idh1_statuswt)) %>% dplyr::select(age, g.noncimp_or_idh1_wt, mgmt_statusmethylated)
+X <- X %>% mutate(g.noncimp_or_idh1_wt = (g.cimp_methylationnongcimp | idh1_statuswt)) %>% dplyr::select(age, g_noncimp_wt = g.noncimp_or_idh1_wt, mgmt_meth = mgmt_statusmethylated) 
 nzv <- caret::nearZeroVar(X, saveMetrics= TRUE)
 nzv[nzv$nzv,]
 
@@ -142,7 +142,56 @@ unlist(lapply(split_up, nrow))
 for( i in 1:K){
   train_data <- do.call(rbind, split_up[c(-i)])
   test_data <- split_up[[i]]
-  print(mean(train_data$age))
+  
+  ##Run Stan
+  stan_file <- "Weibull.stan"
+  
+  #Function gen_stan_data and gen_init from Weibull_clinical.R
+  nChain <- 4
+  wei_fullfit <- rstan::stan(stan_file,
+                             data = gen_stan_data(train_data, '~age+ 
+                                                  g_noncimp_wt+ 
+                                                  mgmt_meth'),
+                             cores = min(nChain, parallel::detectCores()),
+                             seed = 7327,
+                             chains = nChain,
+                             iter = 2000,
+                             init = gen_inits(M = 3),
+                             control = list(adapt_delta = 0.99, max_treedepth = 10)
+  )
+  
+  ######### Posterior predicitive checks ######
+  
+  pp_alpha <- rstan::extract(wei_fullfit,'alpha')$alpha
+  pp_mu <- rstan::extract(wei_fullfit,'mu')$mu
+  pp_beta <- rstan::extract(wei_fullfit, 'beta_bg')$beta_bg
+  
+  pp_beta <-  split(pp_beta, seq(nrow(pp_beta)))
+  pp_alpha <-  split(pp_alpha, seq(nrow(pp_alpha)))
+  pp_mu <-  split(pp_mu, seq(nrow(pp_mu)))
+  
+  X_test <- test_data %>%
+    select(age, g_noncimp_wt, mgmt_meth)
+  
+  pp_newdata <- 
+    purrr::pmap(list(pp_beta, pp_alpha, pp_mu),
+                function(pp_beta, pp_alpha, pp_mu) 
+                  {weibull_sim_data(alpha = pp_alpha,
+                  mu = pp_mu,
+                  n = n_distinct(test_data$sample_id),
+                  beta = pp_beta,
+                X = X_test)             } )
+  
+  pp_survdata <- 
+    pp_newdata %>%
+    map(~ mutate(., os_deceased = os_status == 'DECEASED')) %>%
+    map(~ survfit(Surv(os_months, os_deceased) ~ 1, data = .)) %>%
+    map(fortify)
+  
+  #Calculate Brier Score
+  
+  
+  
 }
 
 
