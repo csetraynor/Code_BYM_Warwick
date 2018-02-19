@@ -110,7 +110,7 @@ names(X) <- tolower(names(X))
 
 #impute using caret package method bagged trees. For each predictor in the data, a bagged tree is created using all of the other predictors in the training set. When a new sample has a missing predictor value, the bagged model is used to predict the value. 
 preProc <- caret::preProcess(X[-1], method = c("bagImpute"))
-X[,-1] <- predict(preProc, X[-1], na.action = na.pass)
+X[,-1] <- predict(preProc, X[,-1], na.action = na.pass)
 X[-1] <- round(X[-1])
 #standardise continuos covariates such as age
 preProc <- caret::preProcess(X[1], method = c("center", "scale"))
@@ -139,25 +139,31 @@ data <- glio_clin_dat %>%
 split_up <- lapply(folds, function(ind, dat) dat[ind,], dat = data)
 unlist(lapply(split_up, nrow))
 
+load("WeibullFun.Rdata")  ##needed functions from Weibull_clinical.R script
+
+#initialise output scores
+ibs <- NULL #integrated Brier Score
+
 for( i in 1:K){
   train_data <- do.call(rbind, split_up[c(-i)])
-  test_data <- split_up[[i]]
+  test_data <- tbl_df(split_up[[i]])
   
   ##Run Stan
   stan_file <- "Weibull.stan"
   
   #Function gen_stan_data and gen_init from Weibull_clinical.R
-  nChain <- 4
+  nChain <- 2
   wei_fullfit <- rstan::stan(stan_file,
                              data = gen_stan_data(train_data, '~age+ 
                                                   g_noncimp_wt+ 
                                                   mgmt_meth'),
+                             #control = list(adapt_delta = 0.99,
+                              #              max_treedepth = 10),
                              cores = min(nChain, parallel::detectCores()),
                              seed = 7327,
                              chains = nChain,
-                             iter = 2000,
-                             init = gen_inits(M = 3),
-                             control = list(adapt_delta = 0.99, max_treedepth = 10)
+                             iter = 1000,
+                             init = gen_inits(M = 3)
   )
   
   ######### Posterior predicitive checks ######
@@ -171,24 +177,47 @@ for( i in 1:K){
   pp_mu <-  split(pp_mu, seq(nrow(pp_mu)))
   
   X_test <- test_data %>%
-    select(age, g_noncimp_wt, mgmt_meth)
+    dplyr::select(age, g_noncimp_wt, mgmt_meth) %>%
+    as.matrix()
   
-  pp_newdata <- 
+  pred_newdata <- 
     purrr::pmap(list(pp_beta, pp_alpha, pp_mu),
                 function(pp_beta, pp_alpha, pp_mu) 
                   {weibull_sim_data(alpha = pp_alpha,
                   mu = pp_mu,
                   n = n_distinct(test_data$sample_id),
                   beta = pp_beta,
-                X = X_test)             } )
+                  X = X_test)} )
   
-  pp_survdata <- 
-    pp_newdata %>%
+  pred_survdata <- 
+    pred_newdata %>%
     map(~ mutate(., os_deceased = os_status == 'DECEASED')) %>%
     map(~ survfit(Surv(os_months, os_deceased) ~ 1, data = .)) %>%
     map(fortify)
   
-  #Calculate Brier Score
+  ##Calculate Brier Score
+  
+  smod <- with(test_data %>% dplyr::mutate(
+                 os_deceased = os_status == 'DECEASED'),
+  Surv(os_months, os_deceased))
+
+  pred_KM <- lapply(pred_newdata %>%
+                      map(~ mutate(., 
+                      os_deceased = os_status == 'DECEASED')),
+                      function(x){
+                        survfit(Surv(os_months, os_deceased) ~ 1, data = x)
+                      })
+  
+  
+  # integrated Brier score up to max time
+  pp_brier <- purrr::map(.x = pred_KM,
+                          .f = ~ipred::sbrier(obj = smod,
+                                              pred = .x))
+  ibs[[i]] <- pp_brier %>% unlist()
+  
+  #calculate prognostic index
+  
+  
   
   
   

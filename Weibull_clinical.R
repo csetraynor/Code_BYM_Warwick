@@ -200,7 +200,7 @@ glio_clin_dat <- glio_clin_dat %>%
 stan_file <- "Weibull.stan"
 #open stan file
 if (interactive())
-  file.edit(stanfile)
+  file.edit(stan_file)
 testfit <- rstan::stan(stan_file,
                         data = gen_stan_data(glio_clin_dat, '~ age_centered + 
                                                               g.cimp_or_idh1_r + 
@@ -462,3 +462,29 @@ pl <- pp_predict_surv(pp_alpha = pp_alpha,
 pl + 
   xlim(NA, 250) +
   ggtitle('Posterior predictive checks for NULL weibull model\nfit to GBC 2008 historical cohort; showing 90% CI')
+
+
+
+##Calculate Brier Score
+
+pp_smod <- lapply(pp_newdata %>%
+                    map(~ mutate(., os_deceased = os_status == 'DECEASED')), function(x){
+                      with(x, Surv(os_months, os_deceased))
+                    })
+
+pp_KM <- lapply(pp_smod, function(x){
+  survival::survfit(x ~ 1)
+}) 
+
+# integrated Brier score up to max(DLBCL$time)
+pp_brier <- purrr::map2(.x = pp_smod,
+                        .y = KM,
+                        .f = ~ipred::sbrier(obj = .x,
+                                            pred = .y))
+
+ggplot2::ggplot(data.frame(ibs = pp_brier %>% unlist , model = "weibull clinical")) +
+  geom_boxplot(aes(model, ibs)) + ylim(c(0,0.5))
+
+#Of course the Brier score is really good because we are only evaluating the training error
+
+

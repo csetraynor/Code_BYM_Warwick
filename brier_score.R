@@ -44,7 +44,10 @@ sbrier(pp_smod, pp_survdata)
 pp_brier <- purrr::map2(.x = pp_smod,
                           .y = pp_survdata,
                           .f = ~ipred::sbrier(obj = .x,
-                                       pred = .y))
+                                       pred = .y)) %>% unlist()
+
+ggplot2::ggplot(pp_brier)
+
 
 
 # integrated Brier score up to time=50
